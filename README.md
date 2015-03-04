@@ -457,3 +457,108 @@ zstreams.fromArray([1, 2, 3, 4]).pipe(new ClassicDuplex(duplex, { objectMode: tr
 	// array is [1, 2, 3, 4]
 });
 ```
+### FunctionStream
+
+FunctionStream takes a function with a callback and pushes its output on read.
+FunctionStream is always in objectMode.
+
+```javascript
+var writeStream = new Writable
+var functionStream = new FunctionStream(function(cb) {
+	cb();
+}, options);
+functionStream.pipe(writeStream);
+```
+
+### IntersperseStream
+
+IntersperseStream intersperses a seperator between chunks in the stream.
+
+```javascript
+var writeStream = new Writable();
+var readStream = new Readable({
+	this.push('a');
+	this.push('b');
+	this.push('c');
+	this.push('d');
+	this.push(null);
+});
+var intersperseStream = new IntersperseStream(' ');
+readStream.pipe(intersperseStream).pipe(writeStream);
+```
+
+Taking in 'abcd', the output after going through the intersperse stream will be 'a b c d'
+
+### PluckStream
+
+PluckStream plucks a property from an incoming object. If the property doesn't exist, the object will be skipped.
+PluckStream is always in objectMode.
+
+```javascript
+var writeStream = new Writable();
+var readStream = new Readable({
+	this.push({ a: 'a', value: 'b' });
+	this.push({});
+	this.push({ a: 'b' });
+	this.push({ a: 'c', value: 'another_val' });
+	this.push({ a: 'd' });
+	this.push(null);
+});
+var pluckStream = new PluckStream('a');
+readStream.pipe(pluckStream)intoArray(function(error, array){
+	//Will exclude the empty object because it does not contain 'a'
+});
+```
+
+
+### RequestStream
+
+This stream exists for the sole purpose of wrapping the commonly used npm module
+'request' to make it act like a real duplex stream.  The "stream" it returns is
+not a real streams2 stream, and does not work with the zstreams conversion methods.
+
+This class will emit errors from the request stream and will also emit the 'response'
+event proxied from the request stream.  Additionally, it will emit errors if an error
+response code is received (see options.allowedStatusCodes) .  Error emitted because
+of a disallowed status code will, by default, read in the entire response body before
+emitting the error, and will assign error.responseBody to be the response body.
+
+### SplitStream
+
+SplitStream splits the incoming data stream based on a delimiter.
+NOTE: writableObjectMode will always be false and readableObjectMode will always be true
+
+```javascript
+	var readStream = new Readable({
+		objectMode: false });
+		read = function() {
+			this.push('qqqqqq qqqqqq qqqqqq qqqqqq qqqq');
+			this.push('qq qqqqqq qqqqqq qqqqqq');
+			this.push(null);
+		};
+		var splitStream = new SplitStream(' ');
+		readStream.pipe(splitStream).intoArray(function(error, array) {
+			//Each entry in the resultant array will be equal to 'qqqqqq'
+		});
+```
+
+### StringReadableStream
+
+A readable string that outputs data from a string given to the constructor.
+
+### StringWritableStream
+
+StringWritableStream collects a buffer of objects being passed in to turn into a string.
+
+```javascript
+var readStream = new Readable({ objectMode: false });
+	readStream._read = function() {
+		this.push('a');
+		this.push('b');
+		this.push('c');
+		this.push('d');
+		this.push(null);
+	};
+	var sws = new StringWritableStream({ objectMode: false });
+	var stringFromStream = readStream.pipe(sws).getString();
+```
